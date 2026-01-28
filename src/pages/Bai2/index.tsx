@@ -1,126 +1,91 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Input, Button, List, Popconfirm, message, Space } from 'antd';
-import { DeleteOutlined, EditOutlined, SaveOutlined, CloseOutlined } from '@ant-design/icons';
+import { Card, Input, Button, List, Popconfirm, message } from 'antd';
 
-// Định nghĩa kiểu dữ liệu cho Todo
 interface TodoItem {
   id: number;
   content: string;
 }
 
 const TodoList = () => {
-  // --- STATE ---
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [inputValue, setInputValue] = useState<string>('');
-  
-  // State phục vụ việc chỉnh sửa
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
 
-  // --- EFFECT: Load dữ liệu từ LocalStorage khi mới vào trang ---
   useEffect(() => {
     const savedTodos = localStorage.getItem('myTodoList');
     if (savedTodos) {
-      setTodos(JSON.parse(savedTodos));
+      try {
+        setTodos(JSON.parse(savedTodos));
+      } catch (e) {
+        setTodos([]);
+      }
     }
   }, []);
 
-  // --- EFFECT: Lưu dữ liệu vào LocalStorage mỗi khi todo thay đổi ---
   useEffect(() => {
     localStorage.setItem('myTodoList', JSON.stringify(todos));
   }, [todos]);
 
-  // --- FUNCTION: Thêm mới ---
   const handleAdd = () => {
     if (!inputValue.trim()) {
       message.warning('Vui lòng nhập nội dung!');
       return;
     }
     const newTodo: TodoItem = {
-      id: Date.now(), // Dùng timestamp làm ID duy nhất
+      id: Date.now(),
       content: inputValue
     };
     setTodos([...todos, newTodo]);
     setInputValue('');
-    message.success('Đã thêm công việc mới');
   };
 
-  // --- FUNCTION: Xóa ---
   const handleDelete = (id: number) => {
-    const newList = todos.filter(item => item.id !== id);
-    setTodos(newList);
-    message.success('Đã xóa thành công');
+    setTodos(todos.filter(item => item.id !== id));
   };
 
-  // --- FUNCTION: Bắt đầu sửa ---
-  const startEdit = (item: TodoItem) => {
-    setEditingId(item.id);
-    setEditValue(item.content);
-  };
-
-  // --- FUNCTION: Lưu sửa ---
   const saveEdit = (id: number) => {
-    const newList = todos.map(item => {
-      if (item.id === id) {
-        return { ...item, content: editValue };
-      }
-      return item;
-    });
-    setTodos(newList);
+    setTodos(todos.map(item => (item.id === id ? { ...item, content: editValue } : item)));
     setEditingId(null);
-    setEditValue('');
-    message.success('Đã cập nhật công việc');
-  };
-
-  // --- FUNCTION: Hủy sửa ---
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditValue('');
   };
 
   return (
-    <Card title="Bài 2: Quản lý công việc (TodoList)" style={{ maxWidth: 600, margin: '20px auto' }}>
-      {/* Ô nhập liệu thêm mới */}
-      <Space.Compact style={{ width: '100%', marginBottom: 20 }}>
+    <Card title="Bài 2: Quản lý công việc" style={{ maxWidth: 600, margin: '20px auto' }}>
+      {/* Thay Space.Compact bằng div để an toàn với mọi phiên bản AntD */}
+      <div style={{ display: 'flex', marginBottom: 20 }}>
         <Input 
-          placeholder="Nhập công việc cần làm..." 
+          placeholder="Nhập công việc..." 
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onPressEnter={handleAdd}
         />
-        <Button type="primary" onClick={handleAdd}>Thêm</Button>
-      </Space.Compact>
+        <Button type="primary" onClick={handleAdd} style={{ marginLeft: 8 }}> Thêm </Button>
+      </div>
 
-      {/* Danh sách công việc */}
       <List
+        rowKey="id"
         bordered
         dataSource={todos}
         renderItem={(item) => (
           <List.Item
             actions={[
-              // Nếu đang sửa thì hiện nút Lưu/Hủy, ngược lại hiện Sửa/Xóa
               editingId === item.id ? (
-                <>
-                  <Button type="link" icon={<SaveOutlined />} onClick={() => saveEdit(item.id)}>Lưu</Button>
-                  <Button type="link" danger icon={<CloseOutlined />} onClick={cancelEdit}>Hủy</Button>
-                </>
+                <span key="edit-actions">
+                  <Button type="link" onClick={() => saveEdit(item.id)}>Lưu</Button>
+                  <Button type="link" danger onClick={() => setEditingId(null)}>Hủy</Button>
+                </span>
               ) : (
-                <>
-                  <Button type="link" icon={<EditOutlined />} onClick={() => startEdit(item)}>Sửa</Button>
-                  <Popconfirm title="Bạn có chắc muốn xóa?" onConfirm={() => handleDelete(item.id)}>
-                    <Button type="link" danger icon={<DeleteOutlined />}>Xóa</Button>
+                <span key="normal-actions">
+                  <Button type="link" onClick={() => { setEditingId(item.id); setEditValue(item.content); }}>Sửa</Button>
+                  <Popconfirm title="Xóa nhé?" onConfirm={() => handleDelete(item.id)}>
+                    <Button type="link" danger>Xóa</Button>
                   </Popconfirm>
-                </>
+                </span>
               )
             ]}
           >
-            {/* Nội dung hiển thị */}
             {editingId === item.id ? (
-              <Input 
-                value={editValue} 
-                onChange={(e) => setEditValue(e.target.value)} 
-                onPressEnter={() => saveEdit(item.id)}
-              />
+              <Input value={editValue} onChange={(e) => setEditValue(e.target.value)} />
             ) : (
               item.content
             )}
